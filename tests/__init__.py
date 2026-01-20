@@ -1,0 +1,3 @@
+"""
+Tests for ScaleAI GraphRAG
+"""
