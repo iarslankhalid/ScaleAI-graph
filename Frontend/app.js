@@ -315,7 +315,7 @@ function initializeNetwork() {
     const nodes = allNodes.map(node => ({
         id: node.id,
         label: truncateLabel(node.label || node.id),
-        title: createNodeTooltip(node),
+        // title removed - we use custom popup instead of vis.js tooltip
         color: getNodeColor(node),
         shape: NODE_SHAPES[node.type] || 'dot',
         size: getNodeSize(node),
@@ -434,7 +434,8 @@ function initializeNetwork() {
                     bindToWindow: false
                 },
                 hideEdgesOnDrag: true,
-                hideEdgesOnZoom: false
+                hideEdgesOnZoom: false,
+                tooltip: false  // Disable default vis.js tooltip (we use custom popup)
             },
             layout: {
                 improvedLayout: true,
@@ -933,11 +934,11 @@ function highlightQueryPath(result) {
 
 function addNodeToGraph(nodeData, highlight = false) {
     if (!nodesDataset || nodesDataset.get(nodeData.id)) return;
-    
+
     const newNode = {
         id: nodeData.id,
         label: truncateLabel(nodeData.label || nodeData.id),
-        title: createNodeTooltip(nodeData),
+        // title removed - we use custom popup instead of vis.js tooltip
         color: highlight ? HIGHLIGHT_COLOR : getNodeColor(nodeData),
         shape: NODE_SHAPES[nodeData.type] || 'dot',
         size: highlight ? 25 : getNodeSize(nodeData),
