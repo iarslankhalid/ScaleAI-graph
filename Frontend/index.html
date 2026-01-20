@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScaleAI GraphRAG Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Vis.js for network visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Marked for markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>🔮 GraphRAG</h1>
+                <span class="subtitle">ScaleAI Dashboard</span>
+            </div>
+            
+            <!-- Graph Stats -->
+            <div class="stats-panel">
+                <h3>📊 Graph Statistics</h3>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-nodes">-</span>
+                        <span class="stat-label">Nodes</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-edges">-</span>
+                        <span class="stat-label">Edges</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-fields">-</span>
+                        <span class="stat-label">Fields</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="stat-concepts">-</span>
+                        <span class="stat-label">Concepts</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search -->
+            <div class="search-panel">
+                <h3>🔍 Search Nodes</h3>
+                <input type="text" id="node-search" placeholder="Search for a node...">
+                <div class="search-results" id="search-results"></div>
+            </div>
+            
+            <!-- Tier Filter -->
+            <div class="filter-panel">
+                <h3>🏷️ Filter by Tier</h3>
+                <div class="tier-filters" id="tier-filters">
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="0" checked> Tier 0: Control
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="1" checked> Tier 1: Input
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="2" checked> Tier 2: Monthly
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="3" checked> Tier 3: Annual
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="4" checked> Tier 4: Goals
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="5" checked> Tier 5: Macro
+                    </label>
+                    <label class="tier-checkbox">
+                        <input type="checkbox" value="-1" checked> Concepts
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Legend -->
+            <div class="legend-panel">
+                <h3>🎨 Legend</h3>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-color tier-0"></span> Tier 0: Control</div>
+                    <div class="legend-item"><span class="legend-color tier-1"></span> Tier 1: Input</div>
+                    <div class="legend-item"><span class="legend-color tier-2"></span> Tier 2: Monthly</div>
+                    <div class="legend-item"><span class="legend-color tier-3"></span> Tier 3: Annual</div>
+                    <div class="legend-item"><span class="legend-color tier-4"></span> Tier 4: Goals</div>
+                    <div class="legend-item"><span class="legend-color tier-5"></span> Tier 5: Macro</div>
+                    <div class="legend-item"><span class="legend-color concept"></span> Concept</div>
+                    <div class="legend-item"><span class="legend-color highlighted"></span> Highlighted Path</div>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="controls-panel">
+                <h3>⚙️ Controls</h3>
+                <button class="btn btn-secondary" id="btn-reset-view">Reset View</button>
+                <button class="btn btn-secondary" id="btn-fit-graph">Fit to Screen</button>
+                <button class="btn btn-secondary" id="btn-clear-highlight">Clear Highlights</button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Query Panel -->
+            <div class="query-panel">
+                <div class="query-input-wrapper">
+                    <input type="text" id="query-input" placeholder="Ask a question about your financial data... (e.g., 'Why did my LVR change?')">
+                    <button class="btn btn-primary" id="btn-query">
+                        <span class="btn-icon">🚀</span> Query
+                    </button>
+                </div>
+                <div class="query-options">
+                    <label>
+                        <span>Max Depth:</span>
+                        <input type="number" id="max-depth" value="3" min="1" max="10">
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Graph Container -->
+            <div class="graph-container">
+                <div id="graph-canvas"></div>
+                <div class="graph-loading" id="graph-loading">
+                    <div class="spinner"></div>
+                    <span id="loading-text">Loading graph...</span>
+                    <div class="progress-bar" id="progress-bar" style="display: none;">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Right Panel - Details & LLM Context -->
+        <aside class="details-panel">
+            <!-- Node Details -->
+            <div class="node-details" id="node-details">
+                <h3>📋 Node Details</h3>
+                <div class="details-placeholder">
+                    Click a node to see its details
+                </div>
+                <div class="details-content" id="details-content" style="display: none;">
+                    <div class="detail-field">
+                        <label>ID</label>
+                        <span id="detail-id"></span>
+                    </div>
+                    <div class="detail-field">
+                        <label>Label</label>
+                        <span id="detail-label"></span>
+                    </div>
+                    <div class="detail-field">
+                        <label>Type</label>
+                        <span id="detail-type"></span>
+                    </div>
+                    <div class="detail-field">
+                        <label>Tier</label>
+                        <span id="detail-tier"></span>
+                    </div>
+                    <div class="detail-field">
+                        <label>Section</label>
+                        <span id="detail-section"></span>
+                    </div>
+                    <div class="detail-field">
+                        <label>Definition</label>
+                        <p id="detail-definition"></p>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn btn-small" id="btn-show-upstream">↑ Show Upstream</button>
+                        <button class="btn btn-small" id="btn-show-downstream">↓ Show Downstream</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Query Result / LLM Context -->
+            <div class="llm-context" id="llm-context">
+                <h3>🧠 LLM Context Inspector</h3>
+                <div class="context-placeholder" id="context-placeholder">
+                    Submit a query to see what context is sent to the LLM
+                </div>
+                <div class="context-content" id="context-content" style="display: none;">
+                    <!-- Tabs -->
+                    <div class="context-tabs">
+                        <button class="tab-btn active" data-tab="answer">Answer</button>
+                        <button class="tab-btn" data-tab="traversal">Thinking</button>
+                        <button class="tab-btn" data-tab="context">Context</button>
+                        <button class="tab-btn" data-tab="prompt">Prompt</button>
+                        <button class="tab-btn" data-tab="raw">Debug</button>
+                    </div>
+                    
+                    <!-- Tab Contents -->
+                    <div class="tab-content active" id="tab-answer">
+                        <div class="answer-section">
+                            <div class="confidence-badge" id="confidence-badge">
+                                Confidence: <span id="confidence-value">-</span>
+                            </div>
+                            <div class="answer-text" id="answer-text"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="tab-traversal">
+                        <div class="traversal-info">
+                            <div class="query-metadata">
+                                <h4>Query Analysis</h4>
+                                <div class="metadata-grid">
+                                    <div class="metadata-item">
+                                        <label>Question</label>
+                                        <span id="query-text"></span>
+                                    </div>
+                                    <div class="metadata-item">
+                                        <label>Query Type</label>
+                                        <span id="query-type"></span>
+                                    </div>
+                                    <div class="metadata-item">
+                                        <label>Direction</label>
+                                        <span id="query-direction"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h4 style="margin-top: 20px;">Thinking Process</h4>
+                            <div id="thinking-steps" class="thinking-steps"></div>
+
+                            <h4 style="margin-top: 20px;">Graph Traversal Details</h4>
+                            <div class="traversal-field">
+                                <label>Target Node</label>
+                                <span id="traversal-target"></span>
+                            </div>
+                            <div class="traversal-field">
+                                <label>Direction</label>
+                                <span id="traversal-direction"></span>
+                            </div>
+                            <div class="traversal-field">
+                                <label>Nodes Visited</label>
+                                <span id="traversal-visited"></span>
+                            </div>
+                            <div class="traversal-field">
+                                <label>Path</label>
+                                <div id="traversal-path" class="path-display"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-context">
+                        <div class="context-section">
+                            <h4>🎯 Intent Parsed</h4>
+                            <div id="context-intent"></div>
+                        </div>
+                        <div class="context-section">
+                            <h4>📍 Sources</h4>
+                            <div id="context-sources"></div>
+                        </div>
+                        <div class="context-section">
+                            <h4>📚 Related Concepts</h4>
+                            <div id="context-concepts"></div>
+                        </div>
+                        <div class="context-section">
+                            <h4>⬆️ Upstream Nodes</h4>
+                            <div id="context-upstream"></div>
+                        </div>
+                        <div class="context-section">
+                            <h4>⬇️ Downstream Nodes</h4>
+                            <div id="context-downstream"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="tab-prompt">
+                        <div class="prompt-header">
+                            <h4>📝 Prompt Sent to LLM</h4>
+                            <small>This is what the model receives to generate the answer</small>
+                        </div>
+                        <pre id="llm-prompt" class="llm-prompt-text"></pre>
+                    </div>
+
+                    <div class="tab-content" id="tab-raw">
+                        <pre id="raw-response" class="raw-json"></pre>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

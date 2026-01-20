@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vis.js Test</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        #mynetwork {
+            width: 100vw;
+            height: 100vh;
+            border: 1px solid lightgray;
+        }
+    </style>
+</head>
+<body>
+    <div id="mynetwork"></div>
+    <script>
+        console.log('vis available?', typeof vis !== 'undefined');
+        
+        const nodes = new vis.DataSet([
+            { id: 1, label: 'Node 1' },
+            { id: 2, label: 'Node 2' },
+            { id: 3, label: 'Node 3' }
+        ]);
+        
+        const edges = new vis.DataSet([
+            { from: 1, to: 2 },
+            { from: 2, to: 3 }
+        ]);
+        
+        const container = document.getElementById('mynetwork');
+        const data = { nodes, edges };
+        const options = {
+            physics: {
+                enabled: false
+            }
+        };
+        
+        const network = new vis.Network(container, data, options);
+        console.log('Network created:', network);
+    </script>
+</body>
+</html>
